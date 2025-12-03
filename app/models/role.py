@@ -19,7 +19,9 @@ from app.models.base_model import BaseModel
 class Role(BaseModel):
     __tablename__ = "roles"
 
-    # We keep name as PK for simplicity & performance
+    # We keep name as PK for simplicity & performance.
+    # NOTE: Since BaseModel also has an 'id' PK, this table effectively has 
+    # a Composite Primary Key (id, name). This is valid in SQLAlchemy.
     name: Mapped[str] = mapped_column(
         String(30),
         primary_key=True,
