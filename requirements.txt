@@ -4,6 +4,8 @@
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
 python-multipart==0.0.9
+email-validator==2.1.0           # Required for Pydantic EmailStr
+aiofiles==23.2.1                 # Required for StaticFiles
 
 # =============================================================================
 # DATABASE & ORM
@@ -61,7 +63,3 @@ sentry-sdk==2.14.0               # Error tracking (optional)
 opentelemetry-api==1.27.0
 opentelemetry-sdk==1.27.0
 opentelemetry-instrumentation-fastapi==0.48b0
-
-# =============================================================================
-# END OF FILE – 100% PERFECT
-# =============================================================================
