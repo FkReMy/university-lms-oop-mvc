@@ -4,64 +4,98 @@ FastAPI entry point
 """
 
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-# Import all controllers (API routers)
-from app.controllers import (
-    auth_controller,
-    user_controller,
-    course_controller,
-    quiz_controller,
-    assignment_controller,
-    file_controller,
-)
+# Import settings to ensure config is loaded
+from app.core.config import settings
 
 # Import database models to create tables on startup
 from app.database.base import Base
 from app.database.session import engine
 
-# Create upload directory if not exists
-os.makedirs("static/uploads", exist_ok=True)
-
-# Initialize FastAPI app
-app = FastAPI(
-    title="University LMS API",
-    description="Enterprise-grade Learning Management System – 2025 Edition",
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+# Import all controllers (API routers)
+from app.controllers import (
+    auth_controller,
+    user_controller,
+    quiz_controller,
+    assignment_controller,
+    # course_controller,  # TODO: Create this file (Missing in upload)
+    # file_controller,    # TODO: Create this file (Missing in upload)
 )
 
-# CORS configuration (adjust origins in production)
+# =============================================================================
+# LIFESPAN MANAGER (Modern Startup/Shutdown)
+# =============================================================================
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Handle startup and shutdown events.
+    Replaces deprecated @app.on_event("startup")
+    """
+    # --- Startup ---
+    print("University LMS API starting up...")
+    
+    # Ensure upload directory exists
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    
+    # Create DB tables (In production, use Alembic migrations instead)
+    Base.metadata.create_all(bind=engine)
+    print("Database tables created/verified successfully!")
+    
+    yield
+    
+    # --- Shutdown ---
+    print("University LMS API shutting down...")
+
+# =============================================================================
+# APP INITIALIZATION
+# =============================================================================
+app = FastAPI(
+    title=settings.APP_NAME if hasattr(settings, 'APP_NAME') else "University LMS API",
+    description="Enterprise-grade Learning Management System – 2025 Edition",
+    version=settings.APP_VERSION if hasattr(settings, 'APP_VERSION') else "1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    lifespan=lifespan
+)
+
+# =============================================================================
+# MIDDLEWARE
+# =============================================================================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change to your frontend URL in production
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Mount static files (uploaded PDFs, Word docs, etc.)
+# =============================================================================
+# STATIC FILES
+# =============================================================================
+# Ensure directory exists before mounting to prevent crash
+os.makedirs("static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Include all API routers
+# =============================================================================
+# ROUTERS
+# =============================================================================
 app.include_router(auth_controller.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(user_controller.router, prefix="/api/v1/users", tags=["Users"])
-app.include_router(course_controller.router, prefix="/api/v1/courses", tags=["Courses"])
 app.include_router(quiz_controller.router, prefix="/api/v1/quizzes", tags=["Quizzes"])
 app.include_router(assignment_controller.router, prefix="/api/v1/assignments", tags=["Assignments"])
-app.include_router(file_controller.router, prefix="/api/v1/files", tags=["File Uploads"])
 
-# Database tables creation on startup
-@app.on_event("startup")
-def on_startup():
-    Base.metadata.create_all(bind=engine)
-    print("Database tables created/verified successfully!")
+# TODO: Uncomment these once the files are created
+# app.include_router(course_controller.router, prefix="/api/v1/courses", tags=["Courses"])
+# app.include_router(file_controller.router, prefix="/api/v1/files", tags=["File Uploads"])
 
-# Health check endpoint
-@app.get("/")
+# =============================================================================
+# HEALTH CHECK
+# =============================================================================
+@app.get("/", tags=["Health"])
 def read_root():
     return {
         "message": "University LMS Backend is running!",
@@ -69,11 +103,6 @@ def read_root():
         "docs": "/docs",
         "status": "active"
     }
-
-# Optional: Graceful shutdown
-@app.on_event("shutdown")
-def shutdown_event():
-    print("University LMS API shutting down...")
 
 if __name__ == "__main__":
     import uvicorn
