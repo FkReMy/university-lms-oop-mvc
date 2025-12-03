@@ -32,8 +32,9 @@ def get_current_user(
     Used in all protected routes
     """
     try:
+        # Decode token
         payload = SecurityManager.decode_token(token)
-        user_id: Optional[str] = payload.get("sub")
+        user_id: Optional[str] = payload.get("user_id")  # Changed from "sub" to match decode_token response
         role: Optional[str] = payload.get("role")
 
         if user_id is None or role is None:
@@ -42,8 +43,15 @@ def get_current_user(
                 detail="Invalid token payload",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+        
+        # Optional: Verify user exists in DB if critical (adds latency)
+        # user = db.query(User).filter(User.user_id == user_id).first()
+        # if not user or not user.is_active: ...
+
         return {"user_id": user_id, "role": role}
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -67,7 +75,11 @@ def require_roles(allowed_roles: List[str]):
     Usage: Depends(require_roles(["Professor", "AssociateTeacher"]))
     """
     def role_checker(current_user: dict = Depends(get_current_active_user)):
-        SecurityManager.check_role(current_user, allowed_roles)
+        if current_user["role"] not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied. Required roles: {allowed_roles}"
+            )
         return current_user
     return role_checker
 
