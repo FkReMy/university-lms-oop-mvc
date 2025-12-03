@@ -12,9 +12,13 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
+    # Load all variables from .env
+    env_file:
+      - .env
+    # Override specific variables if needed for Docker internal networking
     environment:
-      - ENVIRONMENT=production
-      - DATABASE_URL=postgresql+psycopg2://university_admin:SuperSecret2025!@postgres:5432/university_lms
+      - POSTGRES_HOST=postgres
+      - REDIS_HOST=redis
     volumes:
       - ./static/uploads:/app/static/uploads
       - ./logs:/app/logs
@@ -34,13 +38,12 @@ services:
     image: postgres:16-alpine
     container_name: lms-postgres
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: university_admin
-      POSTGRES_PASSWORD: SuperSecret2025!
-      POSTGRES_DB: university_lms
+    # Load DB credentials from .env
+    env_file:
+      - .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+      # - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro # Uncomment if you have this file
     ports:
       - "5432:5432"
     healthcheck:
@@ -90,18 +93,21 @@ services:
       - lms-network
 
   # =================================================================
-  # Celery Worker – Background Tasks (Virus Scan, Grading, Email)
+  # Celery Worker – Background Tasks
   # =================================================================
   celery:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: lms-celery
-    command: celery -A app.tasks.celery_app worker --loglevel=info
+    # WARNING: 'app.tasks.celery_app' does not exist in your files yet.
+    # I have commented this out. Uncomment when you create app/tasks.py
+    # command: celery -A app.tasks.celery_app worker --loglevel=info
+    command: echo "Celery worker disabled until app/tasks.py is created"
     volumes:
       - ./static/uploads:/app/static/uploads
-    environment:
-      - DATABASE_URL=postgresql+psycopg2://university_admin:SuperSecret2025!@postgres:5432/university_lms
+    env_file:
+      - .env
     depends_on:
       - redis
       - postgres
@@ -116,9 +122,13 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: lms-flower
-    command: celery -A app.tasks.celery_app flower --port=5555
+    # Same warning as above
+    # command: celery -A app.tasks.celery_app flower --port=5555
+    command: echo "Flower disabled until app/tasks.py is created"
     ports:
       - "5555:5555"
+    env_file:
+      - .env
     depends_on:
       - redis
       - celery
