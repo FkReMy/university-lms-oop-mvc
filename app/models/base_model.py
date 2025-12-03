@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Annotated  # <--- FIXED: Added Annotated here
 
 from sqlalchemy import Column, String, DateTime, Boolean, func
 from sqlalchemy.dialects.postgresql import UUID
