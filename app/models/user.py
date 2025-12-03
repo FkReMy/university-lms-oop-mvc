@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, List, Optional
 from sqlalchemy import (
     Column, String, DateTime, Boolean, ForeignKey, Table, CheckConstraint,
-    UniqueConstraint, func
+    UniqueConstraint, func, ForeignKeyConstraint  # <--- FIXED: Added ForeignKeyConstraint
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
